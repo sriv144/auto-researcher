@@ -1,0 +1,43 @@
+name: AutoResearcher
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: 'Optional note (e.g. focus on Python repos)'
+        required: false
+        default: ''
+  schedule:
+    - cron: '30 2 * * *'  # 8:00 AM IST = 2:30 AM UTC
+
+jobs:
+  research:
+    runs-on: self-hosted
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout AutoResearcher repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Configure Git identity
+        run: |
+          git config --global user.email "auto-researcher@github.com"
+          git config --global user.name "AutoResearcher"
+
+      - name: Run AutoResearcher
+        env:
+          GITHUB_TOKEN: ${{ secrets.AR_GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.AR_SLACK_WEBHOOK }}
+          GITHUB_USERNAME: sriv144
+        run: python researcher.py
+
+      - name: Commit updated QUEUE.md
+        run: |
+          git add QUEUE.md
+          git diff --staged --quiet || git commit -m "chore: update queue after run $(date +'%Y-%m-%d')"
+          git push
